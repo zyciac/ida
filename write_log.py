@@ -17,6 +17,10 @@ class wLog:
         self.__is_Exception = is_Exception
         self.__logcount = 0
         self.__init_helper()
+        time = self.__getCurTime()
+        self.write('\n\n', self.__path, self.__writing_type)
+        if not self.__is_Exception:
+            self.__writeString(time, self.__path, self.__writing_type)
 
     def __init_helper(self):
         if self.__path is None:
@@ -44,6 +48,11 @@ class wLog:
             self.__writeException("Exception logger cannot write new file")
             return
         ffile = self.__create_newfile()
+        with open(ffile, self.__writing_type) as f:
+            time = self.__getCurTime()
+            f.write(time)
+            f.write('\n')
+
         self.write(stuff, ffile)
 
     def __getCurTime(self):
@@ -108,21 +117,23 @@ class wLog:
 
     def __writeList(self, stuff, ffile, ttype):
         with open(ffile, ttype) as f:
-            f.write('\n'+self.__getCurTime()+'\n')
+            # f.write('\n'+self.__getCurTime()+'\n')
             f.write("*List*:\n")
             #f.write(self.__retrieve_name(stuff)+':\n')
             for item in stuff:
                 f.write(str(item)+'\n')
+            f.write('\n')
         return
 
 
     def __writeDict(self, stuff, ffile, ttype):
         with open(ffile, ttype) as f:
-            f.write('\n'+self.__getCurTime()+'\n')
+            # f.write('\n'+self.__getCurTime()+'\n')
             f.write("Dict*:\n")
             #f.write(self.__retrieve_name(stuff)+':\n')
             for k in stuff.keys():
                 f.write("{}: {}\n".format(str(k), str(stuff[k])))
+            f.write('\n')
         return
 
 
@@ -134,11 +145,11 @@ class wLog:
 
     def __writeString(self, stuff, ffile, ttype):
         with open(ffile, ttype) as f:
-            f.write('\n'+self.__getCurTime()+'\n')
+            # f.write('\n'+self.__getCurTime()+'\n')
             # f.write("*These are sentences*\n")
             # f.write(self.__retrieve_name(stuff)+':\n')
-            f.write(stuff)
-            f.write('\n')
+            f.write(stuff) 
+            f.write('\n\n')
 
         return
 
@@ -148,3 +159,8 @@ class wLog:
         self.write(stuff, ffile, ttype)
 
         return
+
+logger = wLog()
+a = []
+logger.write_newfile(a)
+logger.write('1')

@@ -1,3 +1,13 @@
+'''
+    this file containes:
+        the definition of wLog
+        the definition of idaObject
+        the definition of idaObject_Opcode
+
+    
+    Make changes to this file first and then copy to others
+'''
+
 import idautils
 import idc
 import idaapi
@@ -8,6 +18,7 @@ import re
 import datetime
 import inspect
 import os
+
 
 class wLog:
     __path = "/Users/Zyciac/Desktop/log/log.txt"
@@ -24,6 +35,10 @@ class wLog:
         self.__is_Exception = is_Exception
         self.__logcount = 0
         self.__init_helper()
+        time = self.__getCurTime()
+        self.write('\n\n', self.__path, self.__writing_type)
+        if not self.__is_Exception:
+            self.__writeString(time, self.__path, self.__writing_type)
 
     def __init_helper(self):
         if self.__path is None:
@@ -51,6 +66,11 @@ class wLog:
             self.__writeException("Exception logger cannot write new file")
             return
         ffile = self.__create_newfile()
+        with open(ffile, self.__writing_type) as f:
+            time = self.__getCurTime()
+            f.write(time)
+            f.write('\n')
+
         self.write(stuff, ffile)
 
     def __getCurTime(self):
@@ -115,21 +135,23 @@ class wLog:
 
     def __writeList(self, stuff, ffile, ttype):
         with open(ffile, ttype) as f:
-            f.write('\n'+self.__getCurTime()+'\n')
+            # f.write('\n'+self.__getCurTime()+'\n')
             f.write("*List*:\n")
             #f.write(self.__retrieve_name(stuff)+':\n')
             for item in stuff:
                 f.write(str(item)+'\n')
+            f.write('\n')
         return
 
 
     def __writeDict(self, stuff, ffile, ttype):
         with open(ffile, ttype) as f:
-            f.write('\n'+self.__getCurTime()+'\n')
+            # f.write('\n'+self.__getCurTime()+'\n')
             f.write("Dict*:\n")
             #f.write(self.__retrieve_name(stuff)+':\n')
             for k in stuff.keys():
                 f.write("{}: {}\n".format(str(k), str(stuff[k])))
+            f.write('\n')
         return
 
 
@@ -141,11 +163,11 @@ class wLog:
 
     def __writeString(self, stuff, ffile, ttype):
         with open(ffile, ttype) as f:
-            f.write('\n'+self.__getCurTime()+'\n')
+            # f.write('\n'+self.__getCurTime()+'\n')
             # f.write("*These are sentences*\n")
             # f.write(self.__retrieve_name(stuff)+':\n')
-            f.write(stuff)
-            f.write('\n')
+            f.write(stuff) 
+            f.write('\n\n')
 
         return
 
@@ -155,8 +177,6 @@ class wLog:
         self.write(stuff, ffile, ttype)
 
         return
-
-
 
 def _locate_objc_runtime_functions(target_msgsend_list):
 	'''
@@ -204,16 +224,22 @@ class idaObject(object):
     # _funNotInNames = []
 
     def __init__(self):
+        self._names = self.__initNames()
         self._functions = self.__initFunctionList()
         self._funInNames = self.__initFunctionsInNames()
         self._funNotInNames = self.__initFunctionsNotInName()
-        
+        self._funPairInNames = self.__initFunctionPairsInNames()
+
+    def __initNames(self):
+        return list(idautils.Names())
+
     def __initFunctionList(self):
         return list(idautils.Functions())
 
     def __initFunctionsInNames(self):
         nameList = idautils.Names()
         addrInNameList = []
+
         for addr_name_pairs in nameList:
             addrInNameList.append(addr_name_pairs[0])
         return [funcaddr for funcaddr in self._functions if funcaddr in addrInNameList] 
@@ -223,6 +249,18 @@ class idaObject(object):
 
     def getFunctionsInNames(self):
         return self._funInNames
+
+    def __initFunctionPairsInNames(self):
+        nameList = self._names
+        funcPairInNames = []
+        for pair in nameList:
+            addr, name = pair
+            if addr in self._functions:
+                funcPairInNames.append(pair)
+        return funcPairInNames
+    
+    def getFunctionPairInNames(self):
+        return self._funPairInNames
 
 class idaObject_Opcode(idaObject):
     ''' 
