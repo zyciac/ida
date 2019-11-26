@@ -229,8 +229,16 @@ class idaObject_Function(idaObject):
             'BLR', 'B.LS', 'B.CS','B.GT', 'B.PL', 
             'B.MI', 'B.GE', 'BFI']
 
+        self.subrParaReg = ['X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7']
+        self.subrRetReg  = ['X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7']
+        self.frmReg = 'X29'
+        self.calleeSaveReg = ['X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25',
+                            'X26', 'X27', 'X28', 'X29']
+        self.callerSaveReg = ['X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15']
+
         self._msgSendPairs = self.__initMsgSendPairs()
         # self._objcRuntimeCollection = self.__initObjcRuntimeCollection()
+
 
     def __initMsgSendPairs(self):
         positiveReg = re.compile('.*_objc_msgsend', re.IGNORECASE)
@@ -256,6 +264,8 @@ class idaObject_Function(idaObject):
 
     def getObjcRuntimeCollection(self):
         return self._objcRuntimeCollection
+
+    
 
 print 'begin'
 logger = wLog()
