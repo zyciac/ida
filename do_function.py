@@ -179,21 +179,28 @@ class myFuncClass(object):
         self.end = None
         self.funcName = ""
         self.funcAddr = None
+        self.cfg = {}
+        self.codeblocks = []
 
         # The following two lists contain the addr of the functions that is called, 
         # and the functions that it calls
-        # in terms of list of tuples
+        # in terms of lists
 
-        self.beCalledList = [] # (caller_addr, caller_in_function_calling_addr)
+        self.beCalledList = [] # 
 
-        self.callingList = [] # tuple = (calling_addr, func_addr_being_called)
-
+        self.callingList = [] # functions_being_called_addr
+        self.callingAddr = [] # in function address, indicating where the call happens
         #self.__set__(start_addr)
 
+    # set_start set start, end, funcAddr
     def set_start(self, start_addr):
         self.start = start_addr
         self.funcObj = ida_funcs.get_func(start_addr)
         self.end = self.funcObj.endEA
+        return self
+    
+    def set_name(self, name):
+        self.funcName = name
 
 class idaObject(object):
     ''' 
@@ -283,7 +290,7 @@ class idaObject_Function(idaObject):
         # Interprocedueral Call Scratch Reg
         self.ips = ['X16', 'X17']
         self.returnBlockReg = 'X8'
-        
+
         self.linkReg = 'X30' # Address to return after a subroutine call
 
 
@@ -298,7 +305,6 @@ class idaObject_Function(idaObject):
         # Properties for Specific Purpose
         self._msgSendPairs = self.__initMsgSendPairs()
         # self._objcRuntimeCollection = self.__initObjcRuntimeCollection()
-
 
     def __initMsgSendPairs(self):
         positiveReg = re.compile('.*_objc_msgsend', re.IGNORECASE)
@@ -325,11 +331,93 @@ class idaObject_Function(idaObject):
     def getObjcRuntimeCollection(self):
         return self._objcRuntimeCollection
 
-    
+    def startGetCallGraph(self, func_start_addr):
+        curFun = self.tmpFunc.set_start(func_start_addr)
+
+        # Re construct the following to not use self._funPairInNames
+        name = None
+        for funcPairs in self._funPairInNames:
+            if func_start_addr == funcPairs[0]:
+                name = funcPairs[1]
+                break
+        if name == None:
+            name = 'sub_'+str(hex(func_start_addr))
+        curFun.set_name(name)
+
+        self.getCallingAddress(curFun)
+        # print curFun.callingAddr: Worked
+
+        for callingAddr in curFun.callingAddr:
+            receiver = self.resolveCallingAddressBackwards(curFun, 'X0', callingAddr, curFun.start)
+            sel = self.resolveCallingAddressBackwards(curFun, 'X1', callingAddr, curFun.start)
+            print str(hex(callingAddr))
+            print receiver
+            print sel
+            print ''
+
+        #TODO
+        # Collect all the func calls and combine to get the call graph
+
+        return 
+
+    def getCallingAddress(self, func):
+        print func.funcName
+        pc = func.start
+        while pc < func.end: # or pc != idc.BADADDR
+            # print str(hex(pc))+' '+idc.GetDisasm(pc)
+            # Assume LDR can be tracked by idautils.DataRefsFrom()
+            # And Assume MOV can be tracked directly
+            opcode = idc.GetMnem(pc)
+            if opcode in self.functionCallMnemWithSub:
+                if opcode == 'BL':
+                    operand = idc.print_operand(pc ,0)
+                    # print operand
+                    msgsendRe = re.compile('.*msgsend.*', re.IGNORECASE)
+                    if msgsendRe.match(operand):
+                        # print idc.GetDisasm(pc)
+                        func.callingAddr.append(pc)
+                elif opcode == 'BLR':
+                    print idc.GetDisasm(pc)
+            pc = idc.next_head(pc, func.end)
+
+    def resolveCallingAddressBackwards(self, func, target, start, end):
+        '''
+        start is callingAddr
+        end is curFun.start
+        '''
+        
+        pc = start
+        pc = idc.prev_head(pc, 0)
+        while pc > end:
+            opcode = idc.GetMnem(pc)
+            opTarget = idc.print_operand(pc, 0)
+            # print opcode
+            # print opTarget
+            # print '\n'
+            if opcode in self.collectRegMnem and opTarget == target:
+                return None
+
+            if opcode in self.assignRegMnem and opTarget == target:
+                if opcode == 'MOV':
+                    nextTarget = opTarget = idc.print_operand(pc, 1)
+                    self.resolveCallingAddressBackwards(func, nextTarget, pc, end)
+                elif opcode == 'LDR':
+                    dataref = list(idautils.DataRefsFrom(pc))[0]
+                    value = idc.print_operand(dataref, 0)
+                    return value
+                    
+            pc = idc.prev_head(pc, 0)
+        return None
+        
+    def startGetControlFlow(self, func):
+        pass
+
 
 print 'begin'
 logger = wLog()
 obj = idaObject_Function()
-logger.write_newfile(obj.getMsgSendPair())
+funcStartTmp = 0x0000000100004730
+funcStartTmp2 = 0x0000000100004784
+obj.startGetCallGraph(funcStartTmp2)
 print "end"
 
