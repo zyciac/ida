@@ -352,7 +352,7 @@ class idaObject_Function(idaObject):
             sel = self.resolveCallingAddressBackwards(curFun, 'X1', callingAddr, curFun.start)
             print str(hex(callingAddr))
             print receiver
-            print sel
+            print sel 
             print ''
 
         #TODO
@@ -391,19 +391,24 @@ class idaObject_Function(idaObject):
         while pc > end:
             opcode = idc.GetMnem(pc)
             opTarget = idc.print_operand(pc, 0)
+            # print hex(pc)
             # print opcode
-            # print opTarget
+            # print target
             # print '\n'
+
+            value = None
             if opcode in self.collectRegMnem and opTarget == target:
                 return None
 
             if opcode in self.assignRegMnem and opTarget == target:
                 if opcode == 'MOV':
-                    nextTarget = opTarget = idc.print_operand(pc, 1)
-                    self.resolveCallingAddressBackwards(func, nextTarget, pc, end)
+                    nextTarget = idc.print_operand(pc, 1)
+                    return self.resolveCallingAddressBackwards(func, nextTarget, pc, end)
+                    
                 elif opcode == 'LDR':
                     dataref = list(idautils.DataRefsFrom(pc))[0]
                     value = idc.print_operand(dataref, 0)
+
                     return value
                     
             pc = idc.prev_head(pc, 0)
@@ -413,11 +418,11 @@ class idaObject_Function(idaObject):
         pass
 
 
-print 'begin'
+print '---------------------------begin'
 logger = wLog()
 obj = idaObject_Function()
 funcStartTmp = 0x0000000100004730
-funcStartTmp2 = 0x0000000100004784
+funcStartTmp2 = 0x0000000100004808
 obj.startGetCallGraph(funcStartTmp2)
 print "end"
 
