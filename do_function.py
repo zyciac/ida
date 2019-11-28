@@ -8,6 +8,7 @@ import re
 import datetime
 import inspect
 import os
+import ida_funcs
 
 
 
@@ -171,6 +172,29 @@ class wLog:
         return
 
 
+class myFuncClass(object):
+    def __init__(self):
+        self.funcObj = None
+        self.start = None
+        self.end = None
+        self.funcName = ""
+        self.funcAddr = None
+
+        # The following two lists contain the addr of the functions that is called, 
+        # and the functions that it calls
+        # in terms of list of tuples
+
+        self.beCalledList = [] # (caller_addr, caller_in_function_calling_addr)
+
+        self.callingList = [] # tuple = (calling_addr, func_addr_being_called)
+
+        #self.__set__(start_addr)
+
+    def set_start(self, start_addr):
+        self.start = start_addr
+        self.funcObj = ida_funcs.get_func(start_addr)
+        self.end = self.funcObj.endEA
+
 class idaObject(object):
     ''' 
         create general class for idaObject 
@@ -222,20 +246,56 @@ class idaObject(object):
 class idaObject_Function(idaObject):
     def __init__(self):
         idaObject.__init__(self)
+        self.curFunc = myFuncClass()
+        self.tmpFunc = myFuncClass()
 
-        self.functionCallMnem = [
-            'BL', 'B', 'BR', 'B.NE', 'B.EQ', 
-            'B.CC', 'B.HI', 'B.LE', 'B.LT', 
-            'BLR', 'B.LS', 'B.CS','B.GT', 'B.PL', 
-            'B.MI', 'B.GE', 'BFI']
+        self.functionCallMnemNoSub = [
+                                    'B', 'BR', 'B.NE', 'B.EQ', 
+                                    'B.CC', 'B.HI', 'B.LE', 'B.LT', 
+                                    'B.LS', 'B.CS','B.GT', 'B.PL', 
+                                    'B.MI', 'B.GE', 'CBZ', 'CBNZ'
+                                    'TBZ','TBNZ'
+                                    ]
 
+        self.functionCallMnemWithSub = ['BLR', 'BL']
+
+        # To be completed
+        self.assignRegMnem = [
+                            'MOV', 'LDR', 'LDP', 'ADD', 'SUB', 'BFI',
+                            'LDRSW', 'LDRB', 'CMP', 'MOVI', 'FMUL', 
+                            'FADD', 'FCMP', 'CSET', 'CSEL'
+                            ]
+
+        # Assert assignRegPcShiftMnem is followed by a assignRegMnem such as "LDR"
+        self.assignRegPcShiftMnem = ['ADR', 'ADRP']
+
+        # Use "collect" and it means after this operation, the register is collected to be use after
+        self.collectRegMnem = ['STP', 'STR', 'STRB', 'STUR']
+
+        # Arm64 Integer registers
         self.subrParaReg = ['X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7']
         self.subrRetReg  = ['X0', 'X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7']
-        self.frmReg = 'X29'
-        self.calleeSaveReg = ['X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25',
-                            'X26', 'X27', 'X28', 'X29']
-        self.callerSaveReg = ['X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15']
 
+        # SP is different from Frame Pointer
+        self.frmReg = 'X29'
+        self.sp = 'SP'
+
+        # Interprocedueral Call Scratch Reg
+        self.ips = ['X16', 'X17']
+        self.returnBlockReg = 'X8'
+        
+        self.linkReg = 'X30' # Address to return after a subroutine call
+
+
+        # Change from calleeSaveReg to regsSaveByCallee because those regs are saved by the callee(er)
+        self.regsSaveByCallee = ['X19', 'X20', 'X21', 'X22', 'X23', 'X24', 'X25',
+                            'X26', 'X27', 'X28']
+        self.regsSaveByCaller = ['X9', 'X10', 'X11', 'X12', 'X13', 'X14', 'X15']
+
+        # SIMD or FP regs
+        self.fpRegPrefix = ['D', 'V']
+
+        # Properties for Specific Purpose
         self._msgSendPairs = self.__initMsgSendPairs()
         # self._objcRuntimeCollection = self.__initObjcRuntimeCollection()
 
@@ -270,6 +330,6 @@ class idaObject_Function(idaObject):
 print 'begin'
 logger = wLog()
 obj = idaObject_Function()
-logger.write_newfile(obj.getObjcRuntimeCollection())
+logger.write_newfile(obj.getMsgSendPair())
 print "end"
 
