@@ -171,7 +171,13 @@ class wLog:
 
         return
 
-
+class codeblock:
+    def __init__(self):
+        self.seqNumber = None
+        self.startAddr=None
+        self.endAddr=None
+        self.locs=None
+        
 class myFuncClass(object):
     def __init__(self):
         self.funcObj = None
@@ -217,6 +223,8 @@ class idaObject(object):
         self._funInNames = self.__initFunctionsInNames()
         self._funNotInNames = self.__initFunctionsNotInName()
         self._funPairInNames = self.__initFunctionPairsInNames()
+        self.logger = wLog()
+        self.elooger = wLog(is_Exception=True)
 
     def __initNames(self):
         return list(idautils.Names())
@@ -304,7 +312,7 @@ class idaObject_Function(idaObject):
 
         # Properties for Specific Purpose
         self._msgSendPairs = self.__initMsgSendPairs()
-        # self._objcRuntimeCollection = self.__initObjcRuntimeCollection()
+        #self._objcRuntimeCollection = self.__initObjcRuntimeCollection()
 
     def __initMsgSendPairs(self):
         positiveReg = re.compile('.*_objc_msgsend', re.IGNORECASE)
@@ -350,10 +358,20 @@ class idaObject_Function(idaObject):
         for callingAddr in curFun.callingAddr:
             receiver = self.resolveCallingAddressBackwards(curFun, 'X0', callingAddr, curFun.start)
             sel = self.resolveCallingAddressBackwards(curFun, 'X1', callingAddr, curFun.start)
-            print str(hex(callingAddr))
-            print receiver
-            print sel 
-            print ''
+            # print str(hex(callingAddr))
+            # print receiver
+            # print sel 
+            # print ''
+            self.logger.write(str(hex(callingAddr)))
+            if receiver is not None:
+                self.logger.write(receiver)
+            else:
+                self.logger.write("None")
+            if sel is not None:
+                self.logger.write(sel)
+            else:
+                self.logger.write("None")
+            self.logger.write('\n')
 
         #TODO
         # Collect all the func calls and combine to get the call graph
@@ -361,7 +379,8 @@ class idaObject_Function(idaObject):
         return 
 
     def getCallingAddress(self, func):
-        print func.funcName
+        # print func.funcName
+        self.logger.write(func.funcName)
         pc = func.start
         while pc < func.end: # or pc != idc.BADADDR
             # print str(hex(pc))+' '+idc.GetDisasm(pc)
@@ -414,15 +433,17 @@ class idaObject_Function(idaObject):
             pc = idc.prev_head(pc, 0)
         return None
         
-    def startGetControlFlow(self, func):
+    def startGetControlFlow(self, func_start_addr):
+        curFun = self.tmpFunc.set_start(func_start_addr)
+
         pass
 
 
 print '---------------------------begin'
-logger = wLog()
+#logger = wLog()
 obj = idaObject_Function()
 funcStartTmp = 0x0000000100004730
-funcStartTmp2 = 0x0000000100004808
+funcStartTmp2 = 0x00000001000047B4
 obj.startGetCallGraph(funcStartTmp2)
 print "end"
 
