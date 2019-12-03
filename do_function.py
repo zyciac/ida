@@ -445,5 +445,5 @@ obj = idaObject_Function()
 funcStartTmp = 0x0000000100004730
 funcStartTmp2 = 0x00000001000047B4
 obj.startGetCallGraph(funcStartTmp2)
-print "end"
+print "----------------------------end"
 
