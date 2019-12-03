@@ -454,8 +454,8 @@ class myFuncClass(object):
     
     def __extractJpt(self, jptEa):
         '''return a list of location in function'''
-        addr = idautils.DataRefsFrom(jptEa)
-        instruction = list(idc.GetDisasm(addr).split())[0]
+        addr = list(idautils.DataRefsFrom(jptEa))[0]
+        instruction = idc.GetDisasm(addr).split()
         opcode = instruction[0]
         while opcode == 'DCD':
             self.locations.append(self.__locationToEa(instruction[1]))
@@ -533,7 +533,7 @@ class edge:
 print '---------------------------begin'
 #logger = wLog()
 fun = myFuncClass()
-fun.set_start(0x000000010003A858)
+fun.set_start(0x0000000100009A08)
 # print "set complete"
 fun.getCFG()
 # print "get complete"
