@@ -8,10 +8,7 @@ import re
 import datetime
 import inspect
 import os
-import ida_funcs
-
-
-
+import copy
 
 class wLog:
     __path = "/Users/Zyciac/Desktop/log/log.txt"
@@ -170,43 +167,6 @@ class wLog:
         self.write(stuff, ffile, ttype)
 
         return
-
-class codeblock:
-    def __init__(self):
-        self.seqNumber = None
-        self.startAddr=None
-        self.endAddr=None
-        self.locs=None
-        
-class myFuncClass(object):
-    def __init__(self):
-        self.funcObj = None
-        self.start = None
-        self.end = None
-        self.funcName = ""
-        self.funcAddr = None
-        self.cfg = {}
-        self.codeblocks = []
-
-        # The following two lists contain the addr of the functions that is called, 
-        # and the functions that it calls
-        # in terms of lists
-
-        self.beCalledList = [] # 
-
-        self.callingList = [] # functions_being_called_addr
-        self.callingAddr = [] # in function address, indicating where the call happens
-        #self.__set__(start_addr)
-
-    # set_start set start, end, funcAddr
-    def set_start(self, start_addr):
-        self.start = start_addr
-        self.funcObj = ida_funcs.get_func(start_addr)
-        self.end = self.funcObj.endEA
-        return self
-    
-    def set_name(self, name):
-        self.funcName = name
 
 class idaObject(object):
     ''' 
@@ -435,15 +395,153 @@ class idaObject_Function(idaObject):
         
     def startGetControlFlow(self, func_start_addr):
         curFun = self.tmpFunc.set_start(func_start_addr)
+        return curFun.getCFG()
 
-        pass
+
+class myFuncClass(object):
+    def __init__(self):
+        self.funcObj = None
+        self.start = None
+        self.end = None
+        self.funcName = ""
+        self.funcAddr = None
+
+        self.cfg = None
+        self.locations = []
+        self.basicblocks = []
+
+        self.beCalledList = [] # functions that call me 
+
+        self.functionsCalled = [] # functions addrs that are called
+        self.callsiteAddr = [] # exact callsite addr
+        self.functionCallMnemNoSubNoBR = [
+                                    'B','BR', 'B.NE', 'B.EQ', 
+                                    'B.CC', 'B.HI', 'B.LE', 'B.LT', 
+                                    'B.LS', 'B.CS','B.GT', 'B.PL', 
+                                    'B.MI', 'B.GE', 'CBZ', 'CBNZ'
+                                    'TBZ','TBNZ'
+                                    ]
+        self.jptRe = re.compile("^jpt")
+        self.locRe = re.compile(".*_[0-9A-Fa-f]{9}$")
+
+    def set_start(self, start_addr):
+        self.start = start_addr
+        self.funcObj = ida_funcs.get_func(start_addr)
+        self.end = self.funcObj.endEA
+        return self
+
+    def getCFG(self):
+        self.__getAllBBs()
+        self.__getAllEdges()
+        self.__drawCFG()
+    
+    def __locationToEa(self, location):
+        '''
+        location string to int
+        '''
+        hexStr = '0x'+location.split('_')[1]
+        return int(hexStr, 16)
+
+    def __isJpt(self, ea):
+        opcode = idc.GetMnem(ea)
+        # operand0 = idc.print_operand(ea, 0) # when instruction has only 1 argument, it oprand[1] = oprand[0]
+        operand1 = idc.print_operand(ea, 1)
+        # operand2 = idc.print_operand(ea, 2)
+        if opcode == 'ADR':
+            if self.jptRe.match(operand1):
+                return True
+        return False
+    
+    def __extractJpt(self, jptEa):
+        '''return a list of location in function'''
+        addr = idautils.DataRefsFrom(jptEa)
+        instruction = list(idc.GetDisasm(addr).split())[0]
+        opcode = instruction[0]
+        while opcode == 'DCD':
+            self.locations.append(self.__locationToEa(instruction[1]))
+            addr = idc.next_head(addr, idc.BADADDR)
+            instruction = idc.GetDisasm(addr).split()
+            opcode = instruction[0]
+    
+    def __ifBranchWithNoSubCall(self, ea):
+        instruction = idc.GetMnem(ea)
+        if instruction in self.functionCallMnemNoSubNoBR:
+            return True
+
+        return False
+
+
+    def __getAllBBs(self):
+        self.basicblocks = []
+        self.locations = []
+
+        pc = self.start
+
+        locCounter = 0
+        curCB = basicblock()
+        isNewBB = True
+        while pc < self.end:
+            locCounter +=1
+            pcNext = idc.next_head(pc, idc.BADADDR)
+            if isNewBB:
+                curCB.startAddr = pc
+                isNewBB = False
+
+            if self.__isJpt(pc):
+                self.__extractJpt(pc)
+
+            if pcNext in self.locations or pcNext == self.end or self.__ifBranchWithNoSubCall(pc):
+                if self.__ifBranchWithNoSubCall(pc):
+                    operand0 = idc.print_operand(pc, 0)
+                    operand1 = idc.print_operand(pc, 1)
+                    operand2 = idc.print_operand(pc, 2)
+                    if self.locRe.match(operand0):
+                        self.locations.append(self.__locationToEa(operand0))
+                    if self.locRe.match(operand1):
+                        self.locations.append(self.__locationToEa(operand1))
+                    if self.locRe.match(operand2):
+                        self.locations.append(self.__locationToEa(operand2))
+                curCB.endAddr = pc
+                isNewBB = True
+                curCB.locs = locCounter
+                locCounter = 0
+                self.basicblocks.append(copy.deepcopy(curCB))
+                curCB = basicblock()
+            pc = idc.next_head(pc, idc.BADADDR)
+
+    def __getAllEdges(self):
+        return
+
+    def __drawCFG(self):
+        return
+
+class basicblock:
+    def __init__(self):
+        # self.seqNumber = None
+        self.startAddr=None
+        self.endAddr=None
+        self.locs=None
+        
+class edge:
+    def __init__(self):
+        self.jumpBackWards = None
+        self.ifBranch = None
+        self.src = None
+        self.dst = None
 
 
 print '---------------------------begin'
 #logger = wLog()
-obj = idaObject_Function()
-funcStartTmp = 0x0000000100004730
-funcStartTmp2 = 0x00000001000047B4
-obj.startGetCallGraph(funcStartTmp2)
+fun = myFuncClass()
+fun.set_start(0x000000010003A858)
+# print "set complete"
+fun.getCFG()
+# print "get complete"
+for item in fun.basicblocks:
+    print "basicblock:"
+    print item.locs
+    print hex(item.startAddr)
+    print hex(item.endAddr)
+    print ""
 print "----------------------------end"
 

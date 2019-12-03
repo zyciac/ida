@@ -229,6 +229,8 @@ class idaObject(object):
         self._funInNames = self.__initFunctionsInNames()
         self._funNotInNames = self.__initFunctionsNotInName()
         self._funPairInNames = self.__initFunctionPairsInNames()
+        self.logger = wLog()
+        self.elooger = wLog(is_Exception=True)
 
     def __initNames(self):
         return list(idautils.Names())
@@ -261,7 +263,6 @@ class idaObject(object):
     
     def getFunctionPairInNames(self):
         return self._funPairInNames
-
 class idaObject_Opcode(idaObject):
     ''' 
         inherit from idaObject for do_opcode.py function
@@ -270,10 +271,20 @@ class idaObject_Opcode(idaObject):
         idaObject.__init__(self)
         self._opcodeFreq = {}
         self._opcodeList = []
+        self.functionCallMnemNoSub = [
+                            'B', 'BR', 'B.NE', 'B.EQ', 
+                            'B.CC', 'B.HI', 'B.LE', 'B.LT', 
+                            'B.LS', 'B.CS','B.GT', 'B.PL', 
+                            'B.MI', 'B.GE', 'CBZ', 'CBNZ',
+                            'TBZ','TBNZ'
+                            ]
+        self.locRe = re.compile(".*_[0-9A-Fa-f]{9}$")
+        self.subPreRe = re.compile("^sub")
+        self.jptRe = re.compile("^jpt")
         self.__calculateOpcodeFreq()
 
     def __calculateOpcodeFreq(self):
-        for func_addr in self._funInNames:
+        for func_addr in self._functions:
             self.__processFunOp(func_addr)
         self._opcodeFreq = sorted(self._opcodeFreq.items(), key=lambda x: x[1], reverse=True)
     
@@ -299,13 +310,37 @@ class idaObject_Opcode(idaObject):
             print "Opcode list has not been calculated"
             return 
         return self._opcodeFreq
+ 
+
+    def iterateFunction(self, func_addr, do_some_thing):
+        instruction = func_addr
+        tmpFun = ida_funcs.get_func(func_addr)
+        while instruction<tmpFun.endEA:
+            do_some_thing(instruction)
+            instruction = idc.next_head(instruction, tmpFun.endEA)
+    
+    def find_loc(self, addr):
+        opcode = idc.GetMnem(addr)
+        operand0 = idc.print_operand(addr, 0) # when instruction has only 1 argument, it oprand[1] = oprand[0]
+        operand1 = idc.print_operand(addr, 1)
+        operand2 = idc.print_operand(addr, 2)
+        if opcode == 'ADR':
+            if self.jptRe.match(operand1):
+                code = idc.GetDisasm(addr)
+                print (str(hex(addr))+' ' +str(code))
+        return
+
+
         
 
 eLogger = wLog(is_Exception=True)
 logger  = wLog()
 
+    
+
 print "--- starting ---"
 obj = idaObject_Opcode()
-logger.write_newfile(obj.getOpcodeFreq())
+for addr in obj._functions:
+    obj.iterateFunction(addr, obj.find_loc)
 print "--- ending ---"
 #idc.Exit(0)
