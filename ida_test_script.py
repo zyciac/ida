@@ -100,8 +100,17 @@ def _locate_objc_runtime_functions(target_msgsend_list):
 
 	return target_msgsend_list
 
-a = return_functions_in_Names()
-print len(a["addr"])
-for item in a["addr"]:
-	print_function_opcode(item)
-print "done"
+def extractJpt(jptEa):
+	'''return a list of location in function'''
+	locations = []
+	addr = list(idautils.DataRefsFrom(jptEa))[0]
+	instruction = idc.GetDisasm(addr).split()
+	opcode = instruction[0]
+	while opcode == 'DCD':
+		locations.append(instruction[1])
+		addr = idc.next_head(addr, idc.BADADDR)
+		instruction = idc.GetDisasm(addr).split()
+		opcode = instruction[0]
+	print locations
+
+extractJpt(0x100004974)

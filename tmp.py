@@ -1,37 +1,3 @@
-# import write_log
-
-# def yield_func():
-#     _list = [i for i in range(3)]
-#     for i in _list:
-#         yield i*i
-
-
-# def prnt(stuff):
-#     stuff = list(stuff)
-#     print stuff
-
-# class A(object):
-
-#     def __init__(self):
-#         self.a = 1
-#     def getA(self):
-#         print self.a
-
-#     # def getAG(self):
-#     #     print aG
-
-# class B(A):
-#     def __init__(self):
-#         A.__init__(self)
-#         self.b  = 0
-
-#     def getB(self):
-#         print self.b
-
-# a = A()
-# b = B()
-
-# b.getA()
 import idautils
 import re
 import datetime
@@ -205,13 +171,16 @@ class idaObject(object):
     # _funNotInNames = []
 
     def __init__(self):
+        self._names = self.__initNames()
         self._functions = self.__initFunctionList()
         self._funInNames = self.__initFunctionsInNames()
         self._funNotInNames = self.__initFunctionsNotInName()
         self._funPairInNames = self.__initFunctionPairsInNames()
+        self.logger = wLog()
+        self.elogger = wLog(is_Exception=True)
 
     def __initNames(self):
-        return idautils.Names()
+        return list(idautils.Names())
 
     def __initFunctionList(self):
         return list(idautils.Functions())
@@ -231,7 +200,7 @@ class idaObject(object):
         return self._funInNames
 
     def __initFunctionPairsInNames(self):
-        nameList = idautils.Names()
+        nameList = self._names
         funcPairInNames = []
         for pair in nameList:
             addr, name = pair
@@ -239,7 +208,6 @@ class idaObject(object):
                 funcPairInNames.append(pair)
         return funcPairInNames
     
-        
     def getFunctionPairInNames(self):
         return self._funPairInNames
 
