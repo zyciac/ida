@@ -510,9 +510,17 @@ class myFuncClass(object):
             pc = idc.next_head(pc, idc.BADADDR)
 
     def __getAllEdges(self):
+        ''' 
+            
+            TODO: Find all the B objc_runtime that indicating an return 
+            Find B x0, indicating a recursion.
+        '''
         return
 
     def __drawCFG(self):
+        '''
+            This function should update self.CFG
+        '''
         return
 
 class basicblock:
@@ -521,6 +529,7 @@ class basicblock:
         self.startAddr=None
         self.endAddr=None
         self.locs=None
+        self.edgeList = []
         
 class edge:
     def __init__(self):
@@ -533,7 +542,7 @@ class edge:
 print '---------------------------begin'
 #logger = wLog()
 fun = myFuncClass()
-fun.set_start(0x0000000100009A08)
+fun.set_start(0x0000000100026D8C)
 # print "set complete"
 fun.getCFG()
 # print "get complete"

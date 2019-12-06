@@ -330,6 +330,14 @@ class idaObject_Opcode(idaObject):
                 print (str(hex(addr))+' ' +str(code))
         return
 
+    def printOpcodeBR_X01234(self, addr):
+        opcode = idc.GetMnem(addr)
+        if opcode=='BR':
+            operand = idc.print_operand(addr, 0)
+            regList = ['X0', 'X1', 'X2', 'X3', 'X4']
+            if operand in regList:
+                print hex(addr)+' '+idc.GetDisasm(addr)
+        return
 
         
 
@@ -341,6 +349,6 @@ logger  = wLog()
 print "--- starting ---"
 obj = idaObject_Opcode()
 for addr in obj._functions:
-    obj.iterateFunction(addr, obj.find_loc)
+    obj.iterateFunction(addr, obj.printOpcodeBR_X01234)
 print "--- ending ---"
 #idc.Exit(0)
